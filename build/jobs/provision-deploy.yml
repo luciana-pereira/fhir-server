@@ -1,0 +1,121 @@
+
+parameters:
+- name: version
+  type: string
+- name: sql
+  type: boolean
+  default: false
+- name: webAppName
+  type: string
+- name: appServicePlanName
+  type: string
+- name: appServicePlanResourceGroup
+  type: string
+- name: subscription
+  type: string
+- name: resourceGroup
+  type: string
+- name: testEnvironmentUrl
+  type: string
+- name: imageTag
+  type: string
+- name: schemaAutomaticUpdatesEnabled
+  type: string
+  default: 'tool'
+- name: sqlServerAdminPassword
+  type: string
+  default: ''
+- name: sqlServerName
+  type: string
+  default: ''
+- name: reindexEnabled
+  type: boolean
+  default: true
+
+jobs:
+- job: provisionEnvironment
+  pool:
+    name: '$(SharedLinuxPool)'
+    vmImage: '$(LinuxVmImage)'
+  steps:
+  - task: AzureKeyVault@1
+    displayName: 'Azure Key Vault: resolute-oss-tenant-info'
+    inputs:
+      azureSubscription: $(ConnectedServiceName)
+      KeyVaultName: 'resolute-oss-tenant-info'
+
+  - task: AzurePowerShell@4
+    displayName: 'Azure PowerShell script: InlineScript'
+    inputs:
+      azureSubscription: $(ConnectedServiceName)
+      azurePowerShellVersion: latestVersion
+      ScriptType: inlineScript
+      Inline: |
+        Add-Type -AssemblyName System.Web
+     
+        $deployPath = "$(System.DefaultWorkingDirectory)/test/Configuration"
+     
+        $testConfig = (ConvertFrom-Json (Get-Content -Raw "$deployPath/testconfiguration.json"))
+        $flattenedTestConfig = $(System.DefaultWorkingDirectory)/release/scripts/PowerShell/ConvertTo-FlattenedConfigurationHashtable.ps1 -InputObject $testConfig
+     
+        $additionalProperties = $flattenedTestConfig
+     
+        $additionalProperties["SqlServer__DeleteAllDataOnStartup"] = "false"
+        $additionalProperties["SqlServer__AllowDatabaseCreation"] = "true"
+        $additionalProperties["FhirServer__Operations__Import__PollingFrequencyInSeconds"] = 1
+        $additionalProperties["FhirServer__Operations__Export__PollingFrequencyInSeconds"] = 1
+        $additionalProperties["ASPNETCORE_FORWARDEDHEADERS_ENABLED"] = "true"
+
+        $webAppName = "${{ parameters.webAppName }}"
+        $templateParameters = @{
+            fhirVersion = "${{ parameters.version }}"
+            appServicePlanName = "${{ parameters.appServicePlanName }}"
+            appServicePlanSku = "B3"
+            numberOfInstances = 2
+            serviceName = $webAppName
+            securityAuthenticationAuthority = "https://login.microsoftonline.com/$(tenant-id)"
+            securityAuthenticationAudience = "${{ parameters.testEnvironmentUrl }}"
+            additionalFhirServerConfigProperties = $additionalProperties 
+            enableAadSmartOnFhirProxy = $true
+            enableExport = $true
+            enableConvertData = $true
+            enableImport = $true
+            backgroundTaskCount = 5
+            enableReindex = if ("${{ parameters.reindexEnabled }}" -eq "true") { $true } else { $false }
+            imageTag = '${{ parameters.imageTag }}'
+        }
+     
+        if("${{ parameters.sql }}" -eq "true"){
+            # Set SQL Variables
+            $templateParameters["solutionType"] = "FhirServerSqlServer"
+            $templateParameters["sqlAdminPassword"] = "${{parameters.sqlServerAdminPassword}}"
+            $templateParameters["sqlServerName"] = "${{parameters.sqlServerName}}"
+            $templateParameters["sqlServerNewOrExisting"] = "existing"
+            $templateParameters["sqlSchemaAutomaticUpdatesEnabled"] = "${{parameters.schemaAutomaticUpdatesEnabled}}"
+        }
+
+        Write-Host "Check for keyvaults in removed state..."
+        if (Get-AzKeyVault -VaultName $webAppName -Location $(ResourceGroupRegion) -InRemovedState)
+        {
+            Remove-AzKeyVault -VaultName $webAppName -InRemovedState -Location $(ResourceGroupRegion) -Force
+            Write-Host "Deleted KeyVault in RemovedState."
+        }
+
+        Write-Host "Provisioning Resource Group"
+        Write-Host $webAppName
+        Write-Host "${{ parameters.resourceGroup }}"
+        try {
+        New-AzResourceGroupDeployment -Name $webAppName -ResourceGroupName "${{ parameters.resourceGroup }}" -TemplateFile $(System.DefaultWorkingDirectory)/samples/templates/default-azuredeploy-docker.json -TemplateParameterObject $templateParameters -Verbose
+        }catch {
+          if("${{ parameters.sql }}" -eq "true"){
+            $templateParameters["sqlServerNewOrExisting"] = "new"
+            New-AzResourceGroupDeployment -Name $webAppName -ResourceGroupName "${{ parameters.resourceGroup }}" -TemplateFile $(System.DefaultWorkingDirectory)/samples/templates/default-azuredeploy-docker.json -TemplateParameterObject $templateParameters -Verbose
+          }
+        }
+        
+        Write-Host "Setting Key Vault access"
+        Set-AzKeyVaultAccessPolicy -VaultName $webAppName -ObjectId b542f965-4eec-4682-8999-78dd501df864 -PermissionsToSecrets list,get
+
+  - template: ./provision-healthcheck.yml
+    parameters: 
+      webAppName: ${{ parameters.webAppName }}

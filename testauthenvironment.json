@@ -1,0 +1,92 @@
+{
+    "users": [
+        {
+            "id": "globalReaderUser",
+            "roles": [
+                "globalReader"
+            ]
+        },
+        {
+            "id": "globalWriterUser",
+            "roles": [
+                "globalWriter"
+            ]
+        },
+        {
+            "id": "globalExporterUser",
+            "roles": [
+                "globalExporter"
+            ]
+        },
+        {
+            "id": "globalConverterUser",
+            "roles": [
+                "globalConverter"
+            ]
+        },
+        {
+            "id": "globalImporterUser",
+            "roles": [
+                "globalImporter"
+            ]
+        },
+        {
+            "id": "globalAdminUser",
+            "roles": [
+                "globalAdmin"
+            ]
+        }
+    ],
+    "clientApplications": [
+        {
+            "id": "globalAdminServicePrincipal",
+            "roles": [
+                "globalAdmin"
+            ]
+        },
+        {
+            "id": "nativeClient",
+            "roles": []
+        },
+        {
+            "id": "wrongAudienceClient",
+            "roles": []
+        },
+        {
+            "id": "smartUserClient",
+            "roles": [
+                "smartUser"
+            ]
+        },
+        {
+            "id": "smart-practitioner-A",
+            "roles": [
+                "smartUser"
+            ]
+        },
+        {
+            "id": "smart-practitioner-B",
+            "roles": [
+                "smartUser"
+            ]
+        },
+        {
+            "id": "smart-patient-A",
+            "roles": [
+                "smartUser"
+            ]
+        },
+        {
+            "id": "smart-patient-B",
+            "roles": [
+                "smartUser"
+            ]
+        },
+        {
+            "id": "smart-patient-C",
+            "roles": [
+                "smartUser"
+            ]
+        }
+    ]
+}
