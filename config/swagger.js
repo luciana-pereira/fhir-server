@@ -7,7 +7,7 @@ const options = {
       version: '1.0.0',
       description: 'Documentação da API Life Health FHIR Server',
     },
-    basePath: 'localhost:3000/',
+    basePath: 'https://life-health-fhir-server.vercel.app/',
   },
   apis: ['src/routes/*.js'], // Onde seus arquivos com comentários Swagger estão localizados
 };
