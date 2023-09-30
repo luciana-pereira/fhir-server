@@ -9,7 +9,9 @@ const apiUrl = process.env.URL_FHIR;
 const token = await getToken();
 
 const headers = {
+    accept: 'application/json',
     'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
     Authorization: `Bearer ${token}`,
 };
 
