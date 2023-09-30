@@ -9,7 +9,7 @@ const apiUrl = process.env.URL_FHIR;
 const token = await getToken();
 
 const headers = {
-    accept: 'application/json',
+    'Accept': 'application/json',
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': '*',
     Authorization: `Bearer ${token}`,
@@ -21,7 +21,7 @@ export const createPatient = async (req, res) => {
         res.status(200).json(data);
     } catch (error) {
         console.error('Erro ao criar paciente:', error);
-        res.status(500).json({ error: 'Erro ao criar paciente.' });
+        res.status(500).json({ error: 'Erro ao criar paciente:', error});
     }
 };
 
